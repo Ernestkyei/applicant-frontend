@@ -62,7 +62,7 @@ interface SubscriptionFormProps {
   loading: boolean;
 }
 
-const GENDER_OPTIONS = ["Male", "Female" ];
+const GENDER_OPTIONS = ["Male", "Female"];
 
 export default function SubscriptionForm({ pkg, onSubscribe, loading }: SubscriptionFormProps) {
   const [step, setStep] = useState<'details' | 'payment'>('details');
@@ -416,7 +416,7 @@ export default function SubscriptionForm({ pkg, onSubscribe, loading }: Subscrip
                       <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Select
                         value={formData.gender}
-                        onValueChange={(value) => handleSelectChange('gender', value)}
+                        onValueChange={(value: string | null) => handleSelectChange('gender', value)}
                       >
                         <SelectTrigger className={`h-11 pl-10 rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all hover:border-blue-400 hover:bg-blue-50/30 ${
                           errors.gender && touched.gender ? 'border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20' : ''
