@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fonts - Using Inter as the primary font */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Raleway', monospace;
+  
+  /* Colors */
+  --color-primary: #1F3A5F;
+  --color-primary-dark: #14181F;
+  --color-amber-600: #B8863B;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    background-color: #F7F8FA;
+    color: #1A1E24;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Headings - Same font as body */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    color: #1A1E24;
+  }
+
+  /* Code blocks - Raleway for monospace */
+  code, pre {
+    font-family: 'Raleway', monospace;
+  }
+
+  /* Form elements - Inter font */
+  button, input, select, textarea {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
