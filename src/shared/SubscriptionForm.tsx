@@ -62,7 +62,7 @@ interface SubscriptionFormProps {
   loading: boolean;
 }
 
-const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female" ];
 
 export default function SubscriptionForm({ pkg, onSubscribe, loading }: SubscriptionFormProps) {
   const [step, setStep] = useState<'details' | 'payment'>('details');
@@ -386,7 +386,7 @@ export default function SubscriptionForm({ pkg, onSubscribe, loading }: Subscrip
                       Date of Birth <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-600" />
                       <Input
                         id="dateOfBirth"
                         name="dateOfBirth"
@@ -394,7 +394,8 @@ export default function SubscriptionForm({ pkg, onSubscribe, loading }: Subscrip
                         value={formData.dateOfBirth}
                         onChange={handleInputChange}
                         onBlur={() => handleBlur('dateOfBirth')}
-                        className={`h-11 pl-10 rounded-xl border-slate-200 bg-slate-50/50 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 transition-all hover:border-blue-400 hover:bg-blue-50/30 ${
+                        style={{ accentColor: '#2563eb' }}
+                        className={`h-11 pl-10 rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all hover:border-blue-400 hover:bg-blue-50/30 accent-blue-600 ${
                           errors.dateOfBirth && touched.dateOfBirth ? 'border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20' : ''
                         }`}
                       />
@@ -417,17 +418,17 @@ export default function SubscriptionForm({ pkg, onSubscribe, loading }: Subscrip
                         value={formData.gender}
                         onValueChange={(value) => handleSelectChange('gender', value)}
                       >
-                        <SelectTrigger className={`h-11 pl-10 rounded-xl border-slate-200 bg-slate-50/50 focus:border-[#14213D] focus:ring-2 focus:ring-[#14213D]/20 transition-all hover:border-blue-400 hover:bg-blue-50/30 ${
+                        <SelectTrigger className={`h-11 pl-10 rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all hover:border-blue-400 hover:bg-blue-50/30 ${
                           errors.gender && touched.gender ? 'border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20' : ''
                         }`}>
                           <SelectValue placeholder="Select your gender" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white border border-slate-200 shadow-lg rounded-xl">
+                        <SelectContent className="rounded-xl border border-blue-100 bg-white shadow-lg">
                           {GENDER_OPTIONS.map((option) => (
-                            <SelectItem 
-                              key={option} 
+                            <SelectItem
+                              key={option}
                               value={option}
-                              className="hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors focus:bg-blue-50 focus:text-blue-700"
+                              className="cursor-pointer text-slate-700 transition-colors data-[highlighted]:bg-blue-50 data-[highlighted]:text-blue-700 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700 focus:bg-blue-50 focus:text-blue-700"
                             >
                               {option}
                             </SelectItem>
