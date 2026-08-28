@@ -187,8 +187,7 @@ export default function SubscriptionForm({ pkg, onSubscribe, loading }: Subscrip
           
           <div className="relative flex items-center justify-between">
             <div>
-              <h3 className="flex items-center gap-2.5 text-2xl font-bold text-white">
-                <Sparkles className="h-6 w-6 text-amber-400" />
+              <h3 className="flex items-center gap-2.5 text-2xl font-bold text-white">           
                 Complete Your Subscription
               </h3>
               <p className="mt-1.5 text-sm text-blue-200/80">
