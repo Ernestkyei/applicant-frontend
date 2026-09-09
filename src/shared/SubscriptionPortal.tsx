@@ -51,10 +51,14 @@ interface Package {
 interface FormData {
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  nationality: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   phoneNumber: string;
+  address: string;
+  city: string;
+  country: string;
   paymentMethod: string;
 }
 
@@ -70,7 +74,7 @@ export default function SubscriptionPortal() {
 
   const handleSubscribe = async (formData: FormData) => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     console.log('Form Data:', formData);
     console.log('Selected Package:', selected);
     setLoading(false);

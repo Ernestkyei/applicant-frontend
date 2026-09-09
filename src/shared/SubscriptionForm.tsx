@@ -58,7 +58,7 @@ interface FormData {
 
 interface SubscriptionFormProps {
   pkg: Package;
-  onSubscribe: (data: FormData) => void;
+  onSubscribe: (data: FormData) => void | Promise<void>;
   loading: boolean;
 }
 
