@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LandingPage from './pages/Home/LandingPage';
+import LandingPage from './pages/Home/HeroSection';
 import { AccessCodePage } from './pages/auth/login/accessCode';
 import ApplicantPage from './pages/applicantPage/ApplicantPage';
 import Subscription from "./shared/SubscriptionPortal";

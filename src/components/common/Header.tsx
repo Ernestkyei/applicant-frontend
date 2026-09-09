@@ -33,15 +33,28 @@ export function Header({
     navigate('/');
   };
 
+  const handleNavClick = (href: string) => {
+    if (href.startsWith('#')) {
+      const target = document.getElementById(href.replace('#', ''));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    navigate(href);
+    setMobileMenuOpen(false);
+  };
+
   // ✅ Navigation links - ONLY 3 items!
   const navLinks = hasAccess ? [
     { name: "My Application", href: "/applicant/dashboard" },
     { name: "Check Status", href: "/applicant/status" },
     { name: "Profile", href: "/applicant/profile" },
   ] : [
-    { name: "Programs", href: "#programs" },
-    { name: "How it works", href: "#how-it-works" },
-  
+    { name: "Home", href: "#programs" },
+    
   ];
 
   return (
@@ -55,9 +68,10 @@ export function Header({
       {/* Desktop Nav */}
       <div className="hidden md:flex gap-7 items-center">
         {navLinks.map((link) => (
-          <Link
+          <button
             key={link.name}
-            to={link.href}
+            type="button"
+            onClick={() => handleNavClick(link.href)}
             className={`text-sm cursor-pointer transition ${
               activeLink === link.name 
                 ? 'text-amber-600' 
@@ -65,11 +79,11 @@ export function Header({
             }`}
           >
             {link.name}
-          </Link>
+          </button>
         ))}
         
         {hasAccess ? (
-          // ✅ Logged in with access code
+          // Logged in with access code
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-400 flex items-center gap-2">
               <Key className="h-3.5 w-3.5 text-amber-600" />
@@ -84,7 +98,7 @@ export function Header({
             </button>
           </div>
         ) : (
-          // ✅ Not logged in - show access code button (ONLY HERE)
+          // Not logged in - show access code button (ONLY HERE)
           <Link
             to="/access-code"
             className="bg-amber-600 text-gray-900 border-none px-5 py-2.5 rounded-md text-sm font-semibold cursor-pointer hover:bg-amber-500 transition flex items-center gap-2"
@@ -107,18 +121,18 @@ export function Header({
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-[72px] left-0 right-0 bg-gray-800 px-6 py-4 flex flex-col gap-4 w-full z-50">
           {navLinks.map((link) => (
-            <Link
+            <button
               key={link.name}
-              to={link.href}
-              className={`text-sm cursor-pointer transition ${
+              type="button"
+              className={`text-sm cursor-pointer transition text-left ${
                 activeLink === link.name 
                   ? 'text-amber-600' 
                   : 'text-gray-300 hover:text-white'
               }`}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => handleNavClick(link.href)}
             >
               {link.name}
-            </Link>
+            </button>
           ))}
           
           {hasAccess ? (
