@@ -44,10 +44,6 @@ export function Header({
   const navLinks = hasAccess
     ? [
         {
-          name: "My Application",
-          href: "/applicant/dashboard",
-        },
-        {
           name: "Payment",
           href: "/applicant/payment",
         },
@@ -132,10 +128,12 @@ export function Header({
         {hasAccess ? (
           <div className="flex items-center gap-4">
 
-            <span className="text-sm text-gray-400 flex items-center gap-2">
-              <Key className="h-3.5 w-3.5 text-amber-600" />
-              {user?.name || "Applicant"}
-            </span>
+            {user?.name && (
+              <span className="text-sm text-gray-400 flex items-center gap-2">
+                <Key className="h-3.5 w-3.5 text-amber-600" />
+                {user.name}
+              </span>
+            )}
 
             <button
               type="button"
@@ -223,10 +221,12 @@ export function Header({
 
           {hasAccess ? (
             <>
-              <div className="text-sm text-gray-400 flex items-center gap-2 py-2 border-t border-gray-700">
-                <Key className="h-3.5 w-3.5 text-amber-600" />
-                {user?.name || "Applicant"}
-              </div>
+              {user?.name && (
+                <div className="text-sm text-gray-400 flex items-center gap-2 py-2 border-t border-gray-700">
+                  <Key className="h-3.5 w-3.5 text-amber-600" />
+                  {user.name}
+                </div>
+              )}
 
               <button
                 type="button"
