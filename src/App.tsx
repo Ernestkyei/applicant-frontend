@@ -5,6 +5,8 @@ import LandingPage from "./pages/Home/HeroSection";
 import { AccessCodePage } from "./pages/auth/login/accessCode";
 import ApplicantPage from "./pages/applicantPage/ApplicantPage";
 import Payment from "./pages/applicantPage/payment";
+import ProfilePage from "./pages/applicantPage/profile";
+import StatusPage from "./pages/applicantPage/status";
 import Subscription from "./shared/SubscriptionPortal";
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/applicant/dashboard" element={<ApplicantPage />} />
           <Route path="/applicant/payment" element={<Payment />} />
+          <Route path="/applicant/status" element={<StatusPage />} />
+          <Route path="/applicant/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
