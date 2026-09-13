@@ -56,11 +56,7 @@ export default function StepsSection() {
   return (
     <section className="bg-white px-6 md:px-12 py-12 md:py-16">
       <div className="max-w-[1100px] mx-auto">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-amber-100/50 text-amber-600 px-3 py-1 rounded-full text-xs font-semibold tracking-wider mb-3 border border-amber-200/50">
-            <Sparkles className="h-3 w-3" />
-            Simple Process
-          </div>
+        <div className="text-center mb-10">          
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             How it <span className="text-amber-500">works</span>
           </h2>

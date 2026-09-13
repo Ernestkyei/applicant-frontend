@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Header } from "@/components/common/Header";
 import PackageCard from "../shared/PackageCard";
 import SubscriptionForm from "../shared/SubscriptionForm";
 import GeneratedCode from "../shared/GeneratedCode";
@@ -83,7 +82,6 @@ export default function SubscriptionPortal() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
       <div className="max-w-[900px] mx-auto px-6 py-12">
         {!subscribed ? (
           <>

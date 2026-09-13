@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import toast from 'react-hot-toast';
-import { Header } from "@/components/common/Header";
 
 export function AccessCodePage() {
   const [code, setCode] = useState("");
@@ -50,7 +49,6 @@ export function AccessCodePage() {
 
   return (
     <>
-      <Header /> {/* Add Header component here */}
       <div className="relative min-h-screen flex items-center justify-center px-4 py-10 bg-[#F4EFE3]">
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');

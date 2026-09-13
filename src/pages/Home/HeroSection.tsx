@@ -1,7 +1,6 @@
 // src/pages/Home/LandingPage.tsx
 
 import { useState, useEffect } from "react";
-import { Header } from "../../components/common/Header";
 import HeroSection from "../../components/home/HeroSection";
 import StepsSection from "../../components/home/StepsSection";
 import FeaturesSection from "../../components/home/FeaturesSection";
@@ -19,7 +18,6 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-gray-50">
-      <Header />
       <HeroSection isVisible={isVisible} />
       <StepsSection />
       <FeaturesSection />
