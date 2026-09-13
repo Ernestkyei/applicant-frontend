@@ -7,7 +7,6 @@ import FeaturesSection from "../../components/home/FeaturesSection";
 import TestimonialsSection from "../../components/home/TestimonialsSection";
 import GallerySection from "../../components/home/GallerySection";
 import CTASection from "../../components/home/CTASection";
-import Footer from "../../components/home/Footer";
 
 export default function LandingPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -24,7 +23,6 @@ export default function LandingPage() {
       <TestimonialsSection />
       <GallerySection />
       <CTASection />
-      <Footer />
     </div>
   );
 }

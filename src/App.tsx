@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { Header } from "./components/common/Header";
+import Footer from "./components/home/Footer";
 import LandingPage from "./pages/Home/HeroSection";
 import { AccessCodePage } from "./pages/auth/login/accessCode";
 import ApplicantPage from "./pages/applicantPage/ApplicantPage";
@@ -27,6 +28,8 @@ function App() {
           <Route path="/applicant/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
+        <Footer />
       </div>
     </BrowserRouter>
   );
