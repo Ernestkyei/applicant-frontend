@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   CreditCard,
@@ -6,24 +7,113 @@ import {
   Calendar,
   Receipt,
   ShieldCheck,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { getMyPayments } from "../../endpoints/paymentEndpoint";
+
+type PaymentRecord = {
+  packageName: string;
+  academicCycle: string;
+  amount: string;
+  status: string;
+  paymentMethod: string;
+  transactionId: string;
+  paymentDate: string;
+  accessCode: string;
+};
+
+const formatAmount = (amount: any, currency = "GHS") => {
+  if (amount == null) return "—";
+  return `${currency} ${Number(amount).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+const formatDate = (value: any) => {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const mapPayment = (raw: any = {}): PaymentRecord => ({
+  packageName: raw.packageName ?? raw.package?.name ?? "—",
+  academicCycle: raw.academicCycle ?? raw.cycle ?? "—",
+  amount: formatAmount(raw.amount, raw.currency),
+  status: (raw.status ?? "pending").toLowerCase(),
+  paymentMethod: raw.paymentMethod ?? raw.channel ?? "—",
+  transactionId: raw.transactionId ?? raw.reference ?? "—",
+  paymentDate: formatDate(raw.paidAt ?? raw.createdAt ?? raw.paymentDate),
+  accessCode: raw.accessCode ?? "—",
+});
 
 export default function Payment() {
-  const payment = {
-    packageName: "Undergraduate",
-    academicCycle: "2026/2027",
-    amount: "GHS 200.00",
-    status: "Paid",
-    paymentMethod: "Mobile Money",
-    transactionId: "TXN-20260913-00125",
-    paymentDate: "13 September 2026",
-    accessCode: "ACC-7K92-X4QM",
-  };
+  const [payment, setPayment] = useState<PaymentRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    getMyPayments({ page: 1, limit: 1 })
+      .then((res: any) => {
+        if (!alive) return;
+        const list = Array.isArray(res)
+          ? res
+          : res?.data ?? res?.payments ?? [];
+        const latest = list[0];
+
+        if (!latest) {
+          setError("No payment record found.");
+          return;
+        }
+        setPayment(mapPayment(latest));
+      })
+      .catch((e: any) => alive && setError(e.message))
+      .finally(() => alive && setLoading(false));
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center">
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Loader2 size={18} className="animate-spin" />
+          Loading payment details…
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !payment) {
+    return (
+      <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center px-6">
+        <div className="max-w-md w-full bg-white border border-red-100 rounded-2xl p-6 text-center shadow-sm">
+          <AlertCircle size={28} className="text-red-500 mx-auto" />
+          <h2 className="text-base font-semibold text-gray-800 mt-3">
+            Couldn't load payment
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {error || "No payment found for your account."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const isPaid =
+    payment.status === "paid" || payment.status === "success";
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] font-sans">
       <div className="max-w-[900px] mx-auto px-6 py-8">
-
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <span>Applicant Portal</span>
@@ -36,7 +126,6 @@ export default function Payment() {
           <h1 className="text-2xl md:text-[28px] font-semibold text-[#1A1E24]">
             Payment
           </h1>
-
           <p className="text-sm text-gray-500 mt-1">
             View your application package and payment information.
           </p>
@@ -47,10 +136,14 @@ export default function Payment() {
           <div className="p-6 md:p-7">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    isPaid ? "bg-green-50" : "bg-amber-50"
+                  }`}
+                >
                   <CheckCircle2
                     size={25}
-                    className="text-green-600"
+                    className={isPaid ? "text-green-600" : "text-amber-600"}
                   />
                 </div>
 
@@ -58,19 +151,25 @@ export default function Payment() {
                   <p className="text-xs uppercase tracking-wide font-semibold text-gray-400">
                     Payment Status
                   </p>
-
                   <h2 className="text-lg font-semibold text-gray-800 mt-0.5">
-                    Payment Completed
+                    {isPaid ? "Payment Completed" : "Payment Pending"}
                   </h2>
-
                   <p className="text-xs text-gray-500 mt-1">
-                    Your application payment has been successfully processed.
+                    {isPaid
+                      ? "Your application payment has been successfully processed."
+                      : "Your payment is still being processed."}
                   </p>
                 </div>
               </div>
 
-              <span className="w-fit px-4 py-2 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
-                PAID
+              <span
+                className={`w-fit px-4 py-2 rounded-full text-xs font-semibold ${
+                  isPaid
+                    ? "bg-green-50 text-green-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {payment.status.toUpperCase()}
               </span>
             </div>
           </div>
@@ -81,17 +180,12 @@ export default function Payment() {
           <div className="px-6 md:px-7 py-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-[#1F3A5F]/10 flex items-center justify-center">
-                <CreditCard
-                  size={18}
-                  className="text-[#1F3A5F]"
-                />
+                <CreditCard size={18} className="text-[#1F3A5F]" />
               </div>
-
               <div>
                 <h2 className="text-sm font-semibold text-gray-800">
                   Payment Details
                 </h2>
-
                 <p className="text-xs text-gray-500 mt-0.5">
                   Details of your application payment.
                 </p>
@@ -104,7 +198,6 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Package
               </p>
-
               <p className="text-sm font-medium text-gray-800 mt-1">
                 {payment.packageName}
               </p>
@@ -114,7 +207,6 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Academic Cycle
               </p>
-
               <p className="text-sm font-medium text-gray-800 mt-1">
                 {payment.academicCycle}
               </p>
@@ -124,7 +216,6 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Amount Paid
               </p>
-
               <p className="text-lg font-semibold text-[#1F3A5F] mt-1">
                 {payment.amount}
               </p>
@@ -134,7 +225,6 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Payment Method
               </p>
-
               <p className="text-sm font-medium text-gray-800 mt-1">
                 {payment.paymentMethod}
               </p>
@@ -144,7 +234,6 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Transaction ID
               </p>
-
               <p className="text-sm font-medium text-gray-800 mt-1 break-all">
                 {payment.transactionId}
               </p>
@@ -154,13 +243,8 @@ export default function Payment() {
               <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                 Payment Date
               </p>
-
               <div className="flex items-center gap-2 mt-1">
-                <Calendar
-                  size={14}
-                  className="text-gray-400"
-                />
-
+                <Calendar size={14} className="text-gray-400" />
                 <p className="text-sm font-medium text-gray-800">
                   {payment.paymentDate}
                 </p>
@@ -170,59 +254,49 @@ export default function Payment() {
         </div>
 
         {/* Access Code */}
-        <div className="bg-white border border-[#E4E7EB] rounded-2xl overflow-hidden shadow-sm mb-5">
-          <div className="px-6 md:px-7 py-5 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Key
-                  size={18}
-                  className="text-amber-600"
-                />
+        {payment.accessCode && payment.accessCode !== "—" && (
+          <div className="bg-white border border-[#E4E7EB] rounded-2xl overflow-hidden shadow-sm mb-5">
+            <div className="px-6 md:px-7 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                  <Key size={18} className="text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-800">
+                    Application Access Code
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Your access code was generated after successful payment.
+                  </p>
+                </div>
               </div>
+            </div>
 
-              <div>
-                <h2 className="text-sm font-semibold text-gray-800">
-                  Application Access Code
-                </h2>
-
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Your access code was generated after successful payment.
+            <div className="p-6 md:p-7">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">
+                  Access Code
+                </p>
+                <p className="text-2xl md:text-3xl font-bold tracking-[0.18em] text-[#1F3A5F] mt-3">
+                  {payment.accessCode}
+                </p>
+                <p className="text-xs text-gray-500 mt-3">
+                  Keep this code safe. It is used to access your application.
                 </p>
               </div>
             </div>
           </div>
-
-          <div className="p-6 md:p-7">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">
-                Access Code
-              </p>
-
-              <p className="text-2xl md:text-3xl font-bold tracking-[0.18em] text-[#1F3A5F] mt-3">
-                {payment.accessCode}
-              </p>
-
-              <p className="text-xs text-gray-500 mt-3">
-                Keep this code safe. It is used to access your application.
-              </p>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Payment Confirmation */}
         <div className="bg-white border border-[#E4E7EB] rounded-2xl p-6 md:p-7 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="flex items-start gap-3">
-              <CheckCircle2
-                size={19}
-                className="text-green-600 mt-0.5"
-              />
-
+              <CheckCircle2 size={19} className="text-green-600 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-gray-800">
                   Payment Completed
                 </p>
-
                 <p className="text-xs text-gray-500 mt-1">
                   Your payment has been confirmed.
                 </p>
@@ -230,16 +304,11 @@ export default function Payment() {
             </div>
 
             <div className="flex items-start gap-3">
-              <ShieldCheck
-                size={19}
-                className="text-[#1F3A5F] mt-0.5"
-              />
-
+              <ShieldCheck size={19} className="text-[#1F3A5F] mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-gray-800">
                   Application Unlocked
                 </p>
-
                 <p className="text-xs text-gray-500 mt-1">
                   You can access your application.
                 </p>
@@ -247,16 +316,11 @@ export default function Payment() {
             </div>
 
             <div className="flex items-start gap-3">
-              <Receipt
-                size={19}
-                className="text-gray-500 mt-0.5"
-              />
-
+              <Receipt size={19} className="text-gray-500 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-gray-800">
                   Payment Recorded
                 </p>
-
                 <p className="text-xs text-gray-500 mt-1">
                   Your transaction has been recorded.
                 </p>
@@ -274,7 +338,6 @@ export default function Payment() {
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
