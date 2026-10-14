@@ -1,6 +1,6 @@
-// src/components/SubscriptionForm/index.tsx
-import { useState } from "react";
 
+import { useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import {
   ArrowRight,
   User,
@@ -13,7 +13,6 @@ import {
   Globe,
   MapPin,
   Home,
-  Users,
   ChevronRight,
   Check,
   PhoneCall,
@@ -25,14 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
 interface Package {
   name: string;
   price: number;
@@ -41,7 +32,7 @@ interface Package {
   highlight: boolean;
 }
 
-interface FormData {
+export interface FormData {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
@@ -62,8 +53,30 @@ interface SubscriptionFormProps {
   loading: boolean;
 }
 
-const GENDER_OPTIONS = ["Male", "Female"];
-const MOMO_NETWORKS = ["MTN MoMo", "Vodafone Cash", "AirtelTigo Money"];
+const GENDER_OPTIONS = [
+  { label: "Male", value: "MALE" },
+  { label: "Female", value: "FEMALE" },
+];
+
+const MOMO_NETWORKS = [
+  "MTN MoMo",
+  "Vodafone Cash",
+  "AirtelTigo Money",
+];
+
+const PERSONAL_FIELDS = [
+  "firstName",
+  "lastName",
+  "email",
+  "phoneNumber",
+  "dateOfBirth",
+  "gender",
+  "nationality",
+  "address",
+  "city",
+] as const;
+
+type PersonalField = (typeof PERSONAL_FIELDS)[number];
 
 export default function SubscriptionForm({
   pkg,
@@ -71,6 +84,7 @@ export default function SubscriptionForm({
   loading,
 }: SubscriptionFormProps) {
   const [step, setStep] = useState<"details" | "payment">("details");
+  const [submitError, setSubmitError] = useState("");
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -90,45 +104,55 @@ export default function SubscriptionForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const validateField = (name: string, value: string) => {
+  const validateField = (name: string, value: string): string => {
     switch (name) {
       case "firstName":
-        return !value ? "First name is required" : "";
+        return value.trim() ? "" : "First name is required";
 
       case "lastName":
-        return !value ? "Last name is required" : "";
+        return value.trim() ? "" : "Last name is required";
 
       case "email":
-        if (!value) return "Email is required";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          return "Please enter a valid email";
+        if (!value.trim()) return "Email is required";
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          return "Please enter a valid email address";
         }
+
         return "";
 
       case "phoneNumber":
-        if (!value) return "Phone number is required";
-        if (!/^[0-9+\-\s()]{10,15}$/.test(value)) {
+        if (!value.trim()) return "Phone number is required";
+
+        if (!/^[0-9+\-\s()]{10,15}$/.test(value.trim())) {
           return "Please enter a valid phone number";
         }
+
         return "";
 
       case "dateOfBirth":
-        return !value ? "Date of birth is required" : "";
+        if (!value) return "Date of birth is required";
+
+        if (value > new Date().toISOString().slice(0, 10)) {
+          return "Date of birth cannot be in the future";
+        }
+
+        return "";
 
       case "gender":
-        return !value ? "Gender is required" : "";
+        return value ? "" : "Please select your gender";
 
       case "nationality":
-        return !value ? "Nationality is required" : "";
+        return value.trim() ? "" : "Nationality is required";
 
       case "address":
-        return !value ? "Address is required" : "";
+        return value.trim() ? "" : "Address is required";
 
       case "city":
-        return !value ? "City is required" : "";
+        return value.trim() ? "" : "City is required";
 
       case "momoNetwork":
-        return !value ? "Please select your mobile money network" : "";
+        return value ? "" : "Please select your mobile money network";
 
       default:
         return "";
@@ -136,199 +160,267 @@ export default function SubscriptionForm({
   };
 
   const handleBlur = (name: string) => {
-    setTouched({ ...touched, [name]: true });
+    setTouched((previous) => ({ ...previous, [name]: true }));
 
-    const error = validateField(
-      name,
-      formData[name as keyof FormData]
-    );
+    const value = formData[name as keyof FormData];
 
-    if (error) {
-      setErrors({ ...errors, [name]: error });
-    }
+    setErrors((previous) => ({
+      ...previous,
+      [name]: validateField(name, value),
+    }));
   };
 
-  const validateStep = () => {
+  const validateStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    const fields = [
-      "firstName",
-      "lastName",
-      "email",
-      "phoneNumber",
-      "dateOfBirth",
-      "gender",
-      "nationality",
-      "address",
-      "city",
-    ];
-
-    fields.forEach((field) => {
-      const error = validateField(
-        field,
-        formData[field as keyof FormData]
-      );
+    PERSONAL_FIELDS.forEach((field) => {
+      const error = validateField(field, formData[field]);
 
       if (error) {
         newErrors[field] = error;
       }
     });
 
-    setErrors(newErrors);
+    setErrors((previous) => {
+      const updated = { ...previous };
 
-    setTouched(
-      fields.reduce(
-        (acc, field) => ({
-          ...acc,
-          [field]: true,
-        }),
-        {}
-      )
-    );
+      PERSONAL_FIELDS.forEach((field) => {
+        delete updated[field];
+      });
+
+      return { ...updated, ...newErrors };
+    });
+
+    setTouched((previous) => ({
+      ...previous,
+      ...Object.fromEntries(
+        PERSONAL_FIELDS.map((field) => [field, true]),
+      ),
+    }));
 
     return Object.keys(newErrors).length === 0;
   };
 
-  const validatePaymentStep = () => {
-    const newErrors: Record<string, string> = {};
+  const validatePaymentStep = (): boolean => {
+    const error = validateField("momoNetwork", formData.momoNetwork);
 
-    if (!formData.momoNetwork) {
-      newErrors.momoNetwork =
-        "Please select your mobile money network";
-    }
+    setErrors((previous) => ({
+      ...previous,
+      momoNetwork: error,
+    }));
 
-    setErrors(newErrors);
-
-    setTouched({
-      ...touched,
+    setTouched((previous) => ({
+      ...previous,
       momoNetwork: true,
-    });
+    }));
 
-    return Object.keys(newErrors).length === 0;
+    return error === "";
   };
 
   const handleNext = () => {
+    if (loading) return;
+
+    setSubmitError("");
+
     if (validateStep()) {
       setStep("payment");
     }
   };
 
   const handleBack = () => {
+    if (loading) return;
+
+    setSubmitError("");
     setStep("details");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (validatePaymentStep()) {
-      onSubscribe(formData);
+    if (loading) return;
+
+    setSubmitError("");
+
+    if (!validateStep() || !validatePaymentStep()) {
+      setStep("details");
+      return;
+    }
+
+    const submission: FormData = {
+      ...formData,
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender.trim().toUpperCase(),
+      nationality: formData.nationality.trim(),
+      email: formData.email.trim().toLowerCase(),
+      phoneNumber: formData.phoneNumber.trim(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      country: formData.country.trim(),
+      paymentMethod: "mobile_money",
+      momoNetwork: formData.momoNetwork,
+    };
+
+    console.log("Submitting admission subscription", {
+      packageCode: pkg.code,
+      gender: submission.gender,
+      paymentMethod: submission.paymentMethod,
+      momoNetwork: submission.momoNetwork,
+    });
+
+    try {
+      await onSubscribe(submission);
+    } catch (error: unknown) {
+      console.error("Subscription submission failed:", error);
+
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "We could not start your payment. Please try again.",
+      );
     }
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    setFormData({
-      ...formData,
+    setFormData((previous) => ({
+      ...previous,
       [name]: value,
-    });
+    }));
+
+    setSubmitError("");
 
     if (touched[name]) {
-      const error = validateField(name, value);
-
-      setErrors({
-        ...errors,
-        [name]: error,
-      });
+      setErrors((previous) => ({
+        ...previous,
+        [name]: validateField(name, value),
+      }));
     }
   };
 
-  const handleSelectChange = (
-    name: string,
-    value: string | null
-  ) => {
-    const safeValue = value || "";
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
 
-    setFormData({
-      ...formData,
-      [name]: safeValue,
-    });
+    setTouched((previous) => ({
+      ...previous,
+      [name]: true,
+    }));
 
-    if (touched[name]) {
-      const error = validateField(name, safeValue);
+    setErrors((previous) => ({
+      ...previous,
+      [name]: validateField(name, value),
+    }));
 
-      setErrors({
-        ...errors,
-        [name]: error,
-      });
-    }
+    setSubmitError("");
   };
 
-  const getStepNumber = () => {
-    if (step === "details") return 1;
-    return 2;
+  const getStepNumber = () => (step === "details" ? 1 : 2);
+
+  const renderError = (name: string) => {
+    if (!errors[name] || !touched[name]) return null;
+
+    return (
+      <p className="flex items-center gap-1 text-xs text-red-500">
+        <AlertCircle className="h-3 w-3 shrink-0" />
+        {errors[name]}
+      </p>
+    );
   };
+
+  const renderTextField = (
+    name: PersonalField,
+    label: string,
+    placeholder: string,
+    Icon: typeof User,
+    options?: {
+      type?: string;
+      autoComplete?: string;
+      max?: string;
+    },
+  ) => (
+    <div key={name} className="space-y-1.5">
+      <Label
+        htmlFor={name}
+        className="text-sm font-medium text-slate-700"
+      >
+        {label} <span className="text-red-500">*</span>
+      </Label>
+
+      <div className="relative">
+        <Icon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+        <Input
+          id={name}
+          name={name}
+          type={options?.type ?? "text"}
+          autoComplete={options?.autoComplete}
+          max={options?.max}
+          value={formData[name]}
+          onChange={handleInputChange}
+          onBlur={() => handleBlur(name)}
+          placeholder={placeholder}
+          aria-invalid={Boolean(errors[name] && touched[name])}
+          aria-describedby={
+            errors[name] && touched[name] ? `${name}-error` : undefined
+          }
+          className="h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 focus-visible:ring-[#14213D]"
+        />
+      </div>
+
+      {renderError(name)}
+    </div>
+  );
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-2xl shadow-slate-200/60 transition-all duration-300 hover:shadow-3xl hover:shadow-slate-200/70">
+    <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-2xl shadow-slate-200/60 transition-all duration-300">
       <CardContent className="p-0">
-
-        {/* ============================================================
-            HEADER
-        ============================================================ */}
-
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0F1A30] via-[#14213D] to-[#1F3A5F] px-8 py-8">
+        {/* Header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0F1A30] via-[#14213D] to-[#1F3A5F] px-6 py-8 sm:px-8">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-2xl" />
           <div className="absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-amber-500/10 blur-2xl" />
 
-          <div className="relative flex items-center justify-between">
+          <div className="relative flex items-center justify-between gap-4">
             <div>
-              <h3 className="flex items-center gap-2.5 text-2xl font-bold text-white">
+              <h3 className="text-xl font-bold text-white sm:text-2xl">
                 Complete Your Subscription
               </h3>
 
               <p className="mt-1.5 text-sm text-blue-200/80">
-                Get your access code instantly after payment
+                Get your access code after payment confirmation
               </p>
             </div>
 
-            <Badge className="border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm shadow-lg shadow-black/10">
+            <Badge className="shrink-0 border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white">
               Step {getStepNumber()} of 2
             </Badge>
           </div>
         </div>
 
-        {/* ============================================================
-            PROGRESS STEPS
-        ============================================================ */}
-
-        <div className="border-b border-slate-100 bg-slate-50/50 px-8 py-6">
+        {/* Progress */}
+        <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-6 sm:px-8">
           <div className="mx-auto flex max-w-md items-center justify-between">
             {[
-              { step: 1, label: "Personal", icon: User },
-              { step: 2, label: "Payment", icon: Smartphone },
+              { step: 1, label: "Personal" },
+              { step: 2, label: "Payment" },
             ].map((item) => {
               const isActive = getStepNumber() === item.step;
               const isCompleted = getStepNumber() > item.step;
 
               return (
-                <div
-                  key={item.step}
-                  className="flex items-center gap-3"
-                >
+                <div key={item.step} className="flex items-center gap-3">
                   <div
-                    className={`
-                      flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all duration-300
-                      ${
-                        isActive
-                          ? "scale-110 bg-[#14213D] text-white shadow-lg shadow-[#14213D]/30 ring-4 ring-[#14213D]/10"
-                          : isCompleted
-                          ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
-                          : "border border-slate-200 bg-white text-slate-400 shadow-sm"
-                      }
-                    `}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                      isActive
+                        ? "scale-110 bg-[#14213D] text-white shadow-lg ring-4 ring-[#14213D]/10"
+                        : isCompleted
+                          ? "bg-emerald-500 text-white"
+                          : "border border-slate-200 bg-white text-slate-400"
+                    }`}
                   >
                     {isCompleted ? (
                       <Check className="h-5 w-5" />
@@ -339,24 +431,12 @@ export default function SubscriptionForm({
 
                   <div
                     className={`hidden sm:block ${
-                      isActive
-                        ? "text-[#14213D]"
-                        : "text-slate-400"
+                      isActive ? "text-[#14213D]" : "text-slate-400"
                     }`}
                   >
-                    <p
-                      className={`text-xs font-medium ${
-                        isActive
-                          ? "text-[#14213D]"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {item.label}
-                    </p>
-
+                    <p className="text-xs font-medium">{item.label}</p>
                     <p className="text-[10px] text-slate-400">
-                      {item.step === 1 && "Your details"}
-                      {item.step === 2 && "Mobile Money"}
+                      {item.step === 1 ? "Your details" : "Mobile Money"}
                     </p>
                   </div>
 
@@ -369,20 +449,12 @@ export default function SubscriptionForm({
           </div>
         </div>
 
-        {/* ============================================================
-            FORM CONTENT
-        ============================================================ */}
-
-        <div className="px-8 py-8">
-          <form onSubmit={handleSubmit}>
-
-            {/* ========================================================
-                STEP 1: PERSONAL DETAILS
-            ======================================================== */}
-
+        {/* Form */}
+        <div className="px-6 py-8 sm:px-8">
+          <form onSubmit={handleSubmit} noValidate>
             {step === "details" && (
               <div className="space-y-6">
-
+                {/* Access code notice */}
                 <div className="rounded-xl border border-blue-100/80 bg-blue-50/80 p-4 shadow-sm">
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-full bg-blue-100 p-1.5">
@@ -394,396 +466,179 @@ export default function SubscriptionForm({
                         No Password Needed
                       </p>
 
-                      <p className="text-xs text-blue-600/80">
-                        You'll receive an{" "}
-                        <strong>Access Code</strong> after payment
-                        to access your application. No need to
-                        remember a password!
+                      <p className="text-xs leading-5 text-blue-600/80">
+                        You will receive an{" "}
+                        <strong>Access Code</strong> after your payment is
+                        confirmed, allowing you to access your application.
                       </p>
                     </div>
                   </div>
                 </div>
 
+                {/* Names */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {renderTextField(
+                    "firstName",
+                    "First Name",
+                    "Enter your first name",
+                    User,
+                    { autoComplete: "given-name" },
+                  )}
 
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="firstName"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      First Name{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("firstName")}
-                        placeholder="Enter your first name"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.firstName &&
-                          touched.firstName
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.firstName &&
-                      touched.firstName && (
-                        <p className="flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.firstName}
-                        </p>
-                      )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="lastName"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Last Name{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("lastName")}
-                        placeholder="Enter your last name"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.lastName &&
-                          touched.lastName
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.lastName &&
-                      touched.lastName && (
-                        <p className="flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.lastName}
-                        </p>
-                      )}
-                  </div>
+                  {renderTextField(
+                    "lastName",
+                    "Last Name",
+                    "Enter your last name",
+                    User,
+                    { autoComplete: "family-name" },
+                  )}
                 </div>
 
+                {/* Email and phone */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {renderTextField(
+                    "email",
+                    "Email Address",
+                    "you@example.com",
+                    Mail,
+                    {
+                      type: "email",
+                      autoComplete: "email",
+                    },
+                  )}
 
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="email"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Email Address{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("email")}
-                        placeholder="you@example.com"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.email && touched.email
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.email && touched.email && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.email}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="phoneNumber"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Phone Number{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        type="tel"
-                        value={formData.phoneNumber}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("phoneNumber")}
-                        placeholder="0244-123-456"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.phoneNumber &&
-                          touched.phoneNumber
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.phoneNumber &&
-                      touched.phoneNumber && (
-                        <p className="flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.phoneNumber}
-                        </p>
-                      )}
-                  </div>
+                  {renderTextField(
+                    "phoneNumber",
+                    "Phone Number",
+                    "0244-123-456",
+                    Phone,
+                    { type: "tel", autoComplete: "tel" },
+                  )}
                 </div>
 
+                {/* Date of birth and gender */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {renderTextField(
+                    "dateOfBirth",
+                    "Date of Birth",
+                    "Select your date of birth",
+                    Calendar,
+                    {
+                      type: "date",
+                      autoComplete: "bday",
+                      max: new Date().toISOString().slice(0, 10),
+                    },
+                  )}
 
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="dateOfBirth"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Date of Birth{" "}
-                      <span className="text-red-500">*</span>
+                  {/* Modern gender selector */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">
+                      Gender <span className="text-red-500">*</span>
                     </Label>
 
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-600" />
-
-                      <Input
-                        id="dateOfBirth"
-                        name="dateOfBirth"
-                        type="date"
-                        value={formData.dateOfBirth}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("dateOfBirth")}
-                        style={{ accentColor: "#2563eb" }}
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 text-slate-700 transition-all accent-blue-600 hover:border-blue-400 hover:bg-blue-50/30 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.dateOfBirth &&
-                          touched.dateOfBirth
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.dateOfBirth &&
-                      touched.dateOfBirth && (
-                        <p className="flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.dateOfBirth}
-                        </p>
-                      )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="gender"
-                      className="text-sm font-medium text-slate-700"
+                    <div
+                      className="grid grid-cols-2 gap-3"
+                      role="group"
+                      aria-label="Select gender"
                     >
-                      Gender{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
+                      {GENDER_OPTIONS.map((option) => {
+                        const isSelected =
+                          formData.gender === option.value;
 
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Select
-                        value={formData.gender}
-                        onValueChange={(value: string | null) =>
-                          handleSelectChange("gender", value)
-                        }
-                      >
-                        <SelectTrigger
-                          className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 text-slate-700 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 ${
-                            errors.gender && touched.gender
-                              ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                              : ""
-                          }`}
-                        >
-                          <SelectValue placeholder="Select your gender" />
-                        </SelectTrigger>
-
-                        <SelectContent className="rounded-xl border border-blue-100 bg-white shadow-lg">
-                          {GENDER_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option}
-                              value={option}
-                              className="cursor-pointer text-slate-700 transition-colors data-[highlighted]:bg-blue-50 data-[highlighted]:text-blue-700 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700 focus:bg-blue-50 focus:text-blue-700"
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            disabled={loading}
+                            aria-pressed={isSelected}
+                            onClick={() =>
+                              handleSelectChange("gender", option.value)
+                            }
+                            className={`flex h-11 items-center justify-between gap-2 rounded-xl border-2 px-3 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14213D] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 ${
+                              isSelected
+                                ? "border-[#14213D] bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span
+                              className={`text-sm font-medium ${
+                                isSelected
+                                  ? "text-[#14213D]"
+                                  : "text-slate-600"
+                              }`}
                             >
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                              {option.label}
+                            </span>
+
+                            <span
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                                isSelected
+                                  ? "border-[#14213D] bg-[#14213D] text-white"
+                                  : "border-slate-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {errors.gender && touched.gender && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.gender}
-                      </p>
-                    )}
+                    {renderError("gender")}
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="nationality"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Nationality{" "}
-                    <span className="text-red-500">*</span>
-                  </Label>
-
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                    <Input
-                      id="nationality"
-                      name="nationality"
-                      value={formData.nationality}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur("nationality")}
-                      placeholder="e.g. Ghanaian"
-                      className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                        errors.nationality &&
-                        touched.nationality
-                          ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                          : ""
-                      }`}
-                    />
-                  </div>
-
-                  {errors.nationality &&
-                    touched.nationality && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.nationality}
-                      </p>
-                    )}
+                {/* Nationality */}
+                <div>
+                  {renderTextField(
+                    "nationality",
+                    "Nationality",
+                    "e.g. Ghanaian",
+                    Globe,
+                    { autoComplete: "country-name" },
+                  )}
                 </div>
 
+                {/* Address and city */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {renderTextField(
+                    "address",
+                    "Address",
+                    "Enter your street address",
+                    Home,
+                    { autoComplete: "street-address" },
+                  )}
 
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="address"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Address{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <Home className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("address")}
-                        placeholder="Enter your street address"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.address &&
-                          touched.address
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.address && touched.address && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.address}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="city"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      City{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                      <Input
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        onBlur={() => handleBlur("city")}
-                        placeholder="e.g. Accra"
-                        className={`h-11 rounded-xl border-slate-200 bg-slate-50/50 pl-10 transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:border-[#14213D] focus:bg-white focus:ring-2 focus:ring-[#14213D]/20 ${
-                          errors.city && touched.city
-                            ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/20"
-                            : ""
-                        }`}
-                      />
-                    </div>
-
-                    {errors.city && touched.city && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.city}
-                      </p>
-                    )}
-                  </div>
+                  {renderTextField(
+                    "city",
+                    "City",
+                    "e.g. Accra",
+                    MapPin,
+                    { autoComplete: "address-level2" },
+                  )}
                 </div>
 
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="group h-12 w-full rounded-xl bg-[#14213D] font-semibold text-white shadow-lg shadow-[#14213D]/30 transition-all duration-300 hover:bg-[#0F1A30] hover:shadow-xl hover:shadow-[#14213D]/40"
+                  disabled={loading}
+                  className="h-12 w-full rounded-xl bg-[#14213D] font-semibold text-white hover:bg-[#0F1A30]"
                 >
                   Continue to Payment
-
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             )}
 
-            {/* ========================================================
-                STEP 2: MOBILE MONEY PAYMENT
-            ======================================================== */}
-
             {step === "payment" && (
               <div className="space-y-6">
-
-                <div className="rounded-xl border border-amber-100/80 bg-gradient-to-br from-amber-50/80 to-yellow-50/80 p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-
+                {/* Package summary */}
+                <div className="rounded-xl border border-amber-100/80 bg-gradient-to-br from-amber-50/80 to-yellow-50/80 p-5">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-[#14213D] p-2.5 shadow-lg shadow-[#14213D]/20">
+                      <div className="rounded-xl bg-[#14213D] p-2.5">
                         <Smartphone className="h-5 w-5 text-amber-400" />
                       </div>
 
@@ -791,7 +646,6 @@ export default function SubscriptionForm({
                         <p className="text-xs text-slate-500">
                           Selected Package
                         </p>
-
                         <p className="font-bold text-slate-900">
                           {pkg.name}
                         </p>
@@ -799,10 +653,7 @@ export default function SubscriptionForm({
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xs text-slate-500">
-                        Total
-                      </p>
-
+                      <p className="text-xs text-slate-500">Total</p>
                       <p className="text-2xl font-bold text-[#14213D]">
                         GHS {pkg.price}
                       </p>
@@ -810,6 +661,7 @@ export default function SubscriptionForm({
                   </div>
                 </div>
 
+                {/* Mobile Money selection */}
                 <div>
                   <Label className="mb-3 block text-sm font-medium text-slate-700">
                     Select Mobile Money Network{" "}
@@ -818,34 +670,34 @@ export default function SubscriptionForm({
 
                   <div className="grid grid-cols-1 gap-3">
                     {MOMO_NETWORKS.map((network) => {
-                      const isSelected =
-                        formData.momoNetwork === network;
+                      const isSelected = formData.momoNetwork === network;
 
                       return (
                         <label
                           key={network}
-                          className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-all duration-200 ${
+                          className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-all ${
                             isSelected
-                              ? "border-[#14213D] bg-blue-50/50 shadow-md shadow-[#14213D]/10"
+                              ? "border-[#14213D] bg-blue-50/50 shadow-md"
                               : "border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"
-                          }`}
+                          } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
                         >
                           <input
                             type="radio"
                             name="momoNetwork"
                             value={network}
                             checked={isSelected}
+                            disabled={loading}
                             onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                momoNetwork: e.target.value,
-                              })
+                              handleSelectChange(
+                                "momoNetwork",
+                                e.target.value,
+                              )
                             }
                             className="sr-only"
                           />
 
                           <div
-                            className={`rounded-lg p-2.5 transition-colors ${
+                            className={`rounded-lg p-2.5 ${
                               isSelected
                                 ? "bg-[#14213D] text-white"
                                 : "bg-slate-100 text-slate-400"
@@ -878,16 +730,11 @@ export default function SubscriptionForm({
                     })}
                   </div>
 
-                  {errors.momoNetwork &&
-                    touched.momoNetwork && (
-                      <p className="mt-2 flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.momoNetwork}
-                      </p>
-                    )}
+                  {renderError("momoNetwork")}
                 </div>
 
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-100/80 bg-emerald-50/80 p-4 shadow-sm">
+                {/* Security notice */}
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-100/80 bg-emerald-50/80 p-4">
                   <div className="mt-0.5 rounded-full bg-emerald-100 p-1.5">
                     <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   </div>
@@ -897,21 +744,32 @@ export default function SubscriptionForm({
                       Secure Payment + Access Code
                     </p>
 
-                    <p className="text-xs text-emerald-600/80">
-                      After successful payment, your{" "}
-                      <strong>Access Code</strong> will be sent
-                      to your email and phone.
+                    <p className="text-xs leading-5 text-emerald-600/80">
+                      Your access code should only be issued after the
+                      backend confirms successful payment.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4 pt-2">
+                {/* Submission error */}
+                {submitError && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                  >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
 
+                {/* Actions */}
+                <div className="flex gap-4 pt-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleBack}
-                    className="h-12 flex-1 rounded-xl border-slate-200 transition-all hover:border-blue-400 hover:bg-blue-50/30"
+                    disabled={loading}
+                    className="h-12 flex-1 rounded-xl"
                   >
                     Back
                   </Button>
@@ -919,7 +777,7 @@ export default function SubscriptionForm({
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="h-12 flex-[2] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 font-semibold text-white shadow-lg shadow-amber-500/30 transition-all duration-300 hover:scale-[1.02] hover:from-amber-600 hover:to-amber-700 hover:shadow-xl hover:shadow-amber-500/40 active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100"
+                    className="h-12 flex-[2] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 font-semibold text-white hover:from-amber-600 hover:to-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -937,17 +795,12 @@ export default function SubscriptionForm({
 
                 <div className="text-center">
                   <p className="text-xs text-slate-400">
-                    After payment, you'll receive your{" "}
-                    <strong className="text-[#14213D]">
-                      Access Code
-                    </strong>{" "}
-                    instantly via email and SMS.
+                    After payment verification, follow the instructions
+                    to receive your access code.
                   </p>
                 </div>
-
               </div>
             )}
-
           </form>
         </div>
       </CardContent>

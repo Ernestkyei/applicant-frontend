@@ -1,75 +1,153 @@
-import { useState } from "react";
-import { 
-  Copy, 
-  CheckCircle2, 
-  ArrowRight, 
-  KeyRound
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
-interface Package {
-  name: string;
-  price: number;
-  code: string;
-  features: string[];
-  highlight: boolean;
-}
+import { useState } from "react";
 
 interface GeneratedCodeProps {
-  pkg: Package;
+  pkg: {
+    name: string;
+    price: number;
+    code: string;
+    features?: string[];
+    highlight?: boolean;
+  };
+  accessCode: string;
+  verifyPayment?: (reference: string) => Promise<any>;
 }
 
-export default function GeneratedCode({ pkg }: GeneratedCodeProps) {
-  const [copied, setCopied] = useState(false);
-  const accessCode = "482910";
+export default function GeneratedCode({
+  pkg,
+  accessCode,
+  verifyPayment,
+}: GeneratedCodeProps) {
+  const [reference, setReference] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [verified, setVerified] = useState(false);
 
-  const handleCopy = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  const handleVerifyPayment = async () => {
+    if (!verifyPayment) {
+      setMessage("Payment verification is not configured yet.");
+      return;
+    }
+
+    if (!reference.trim()) {
+      setMessage("Please enter your payment reference.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await verifyPayment(reference.trim());
+
+      const result = response?.data ?? response;
+      const status = String(result?.status ?? "").toLowerCase();
+
+      if (
+        result?.verified === true ||
+        result?.success === true ||
+        status === "success" ||
+        status === "successful" ||
+        status === "completed" ||
+        status === "paid"
+      ) {
+        setVerified(true);
+        setMessage("Payment verification completed.");
+      } else {
+        setVerified(false);
+        setMessage(
+          result?.message ??
+            "Payment has not been confirmed. Please try again."
+        );
+      }
+    } catch (error) {
+      setVerified(false);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to verify payment. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setMessage("Access code copied.");
+    } catch {
+      setMessage("Could not copy the code. Please select and copy it manually.");
+    }
   };
 
   return (
-    <Card className="max-w-xl mx-auto border-0 shadow-xl shadow-gray-200/50 overflow-hidden">
-      <CardContent className="p-8 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5 shadow-sm shadow-green-500/20">
-          <CheckCircle2 size={40} className="text-green-600" />
-        </div>
-        
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          You're all set! 🎉
-        </h2>
-        
-        <p className="text-sm text-gray-600 mb-6 max-w-sm mx-auto">
-          Your {pkg.name} subscription is active. Use the access code below to unlock your application form.
-        </p>
+    <div className="mx-auto w-full max-w-xl rounded-xl border bg-white p-6 shadow-sm">
+      <h2 className="text-2xl font-bold text-gray-900">
+        {verified ? "Subscription Confirmed" : "Complete Your Subscription"}
+      </h2>
 
-        <div className="text-xs font-mono text-gray-400 tracking-wider mb-2">
-          YOUR ACCESS CODE
-        </div>
-        
-        <div className="flex items-center justify-center gap-4 bg-gray-50 border-2 border-dashed border-amber-500 rounded-xl px-6 py-4 mb-6 shadow-inner">
-          <span className="font-mono text-3xl font-bold text-gray-900 tracking-widest">
-            {accessCode}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopy}
-            className="h-10 w-10 hover:bg-gray-200 rounded-xl"
+      <p className="mt-2 text-gray-600">
+        Package: <strong>{pkg.name}</strong>
+      </p>
+
+      <p className="mt-1 text-gray-600">
+        Amount: <strong>GHS {pkg.price}</strong>
+      </p>
+
+      {!verified ? (
+        <div className="mt-6 space-y-4">
+          <label
+            htmlFor="payment-reference"
+            className="block text-sm font-medium text-gray-700"
           >
-            {copied ? <CheckCircle2 size={20} className="text-green-600" /> : <Copy size={20} />}
-          </Button>
+            Payment Reference
+          </label>
+
+          <input
+            id="payment-reference"
+            type="text"
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            placeholder="Enter your payment reference"
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          />
+
+          <button
+            type="button"
+            onClick={handleVerifyPayment}
+            disabled={loading || !verifyPayment}
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Verifying..." : "Verify Payment"}
+          </button>
         </div>
+      ) : (
+        <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <h3 className="font-semibold text-green-800">
+            Your Access Code
+          </h3>
 
-        <Button className="w-full bg-[#1F3A5F] hover:bg-[#1F3A5F]/90 text-white rounded-xl shadow-lg shadow-[#1F3A5F]/30 hover:shadow-xl transition-shadow" size="lg">
-          <KeyRound size={18} className="mr-2" /> Unlock Application Form <ArrowRight size={18} className="ml-2" />
-        </Button>
+          <p className="mt-2 break-all font-mono text-lg text-green-900">
+            {accessCode}
+          </p>
 
-        <p className="text-xs text-gray-400 mt-4">
-          We've also sent your access code to your registered email.
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="mt-4 rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800"
+          >
+            Copy Access Code
+          </button>
+        </div>
+      )}
+
+      {message && (
+        <p className="mt-4 text-sm text-gray-700" role="status">
+          {message}
         </p>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
+
