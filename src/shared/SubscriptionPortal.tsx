@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PackageCard from "../shared/PackageCard";
@@ -35,6 +35,34 @@ interface FormData {
   momoNetwork: string;
 }
 
+const STORAGE_ACCESS_CODE = "accessCode";
+const STORAGE_PACKAGE_CODE = "packageCode";
+const STORAGE_PENDING_PACKAGE = "pendingPackageCode";
+
+function readStorage(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // Storage may be unavailable (private mode); ignore.
+  }
+}
+
+function removeStorage(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 function unwrapResponse(response: any): any {
   let result = response;
 
@@ -57,9 +85,7 @@ function unwrapResponse(response: any): any {
 function normalizePackages(response: any): Package[] {
   const result = unwrapResponse(response);
 
-  const list = Array.isArray(result)
-    ? result
-    : result?.packages;
+  const list = Array.isArray(result) ? result : result?.packages;
 
   if (!Array.isArray(list)) {
     throw new Error("The backend did not return a valid package list.");
@@ -75,15 +101,11 @@ function normalizePackages(response: any): Package[] {
       highlight: Boolean(pkg.highlight),
     }))
     .filter(
-      (pkg: Package) =>
-        pkg.name && pkg.code && Number.isFinite(pkg.price)
+      (pkg: Package) => pkg.name && pkg.code && Number.isFinite(pkg.price)
     );
 }
 
-function getPackage(
-  value: any,
-  packages: Package[]
-): Package | undefined {
+function getPackage(value: any, packages: Package[]): Package | undefined {
   const code = String(
     value?.packageCode ??
       value?.package_code ??
@@ -110,8 +132,8 @@ function getPackage(
 
   return packages.find(
     (pkg) =>
-      pkg.code.toUpperCase() === code ||
-      pkg.name.toLowerCase() === name
+      (code && pkg.code.toUpperCase() === code) ||
+      (name && pkg.name.toLowerCase() === name)
   );
 }
 
@@ -149,6 +171,47 @@ function isVerifiedPayment(value: any): boolean {
   );
 }
 
+// The backend wraps its result in several layers
+// ({ status, data: { ...paystack }, accessCode }), so check every layer.
+function findAccessCode(response: any): string | null {
+  let layer = response;
+
+  for (let i = 0; i < 5 && layer && typeof layer === "object"; i++) {
+    const code = getAccessCode(layer);
+    if (code) return code;
+    layer = layer.data;
+  }
+
+  return null;
+}
+
+function isVerifiedResponse(response: any): boolean {
+  let layer = response;
+
+  for (let i = 0; i < 5 && layer && typeof layer === "object"; i++) {
+    if (isVerifiedPayment(layer)) return true;
+    layer = layer.data;
+  }
+
+  return false;
+}
+
+function findPackageInResponse(
+  response: any,
+  packages: Package[]
+): Package | undefined {
+  let layer = response;
+
+  for (let i = 0; i < 5 && layer && typeof layer === "object"; i++) {
+    const match =
+      getPackage(layer, packages) ?? getPackage(layer.metadata, packages);
+    if (match) return match;
+    layer = layer.data;
+  }
+
+  return undefined;
+}
+
 function getCheckoutUrl(value: any): string | null {
   const payment = value?.payment ?? value?.data?.payment ?? value;
 
@@ -171,6 +234,8 @@ export default function SubscriptionPortal({
   forceGeneratedCode = false,
 }: SubscriptionPortalProps) {
   const navigate = useNavigate();
+  const verifiedReferenceRef = useRef<string | null>(null);
+
   const [packages, setPackages] = useState<Package[]>([]);
   const [selected, setSelected] = useState<Package | null>(null);
 
@@ -179,7 +244,9 @@ export default function SubscriptionPortal({
   const [verifying, setVerifying] = useState(false);
 
   const [subscribed, setSubscribed] = useState(false);
-  const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState<string | null>(() =>
+    forceGeneratedCode ? readStorage(STORAGE_ACCESS_CODE) : null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const shouldShowGeneratedCode = forceGeneratedCode || subscribed;
@@ -205,12 +272,14 @@ export default function SubscriptionPortal({
         setPackages(availablePackages);
 
         setSelected((current) => {
-          if (!current) return availablePackages[0];
+          const storedCode = forceGeneratedCode
+            ? readStorage(STORAGE_PACKAGE_CODE)
+            : null;
+          const preferred = storedCode ?? current?.code;
 
           return (
-            availablePackages.find(
-              (pkg) => pkg.code === current.code
-            ) ?? availablePackages[0]
+            availablePackages.find((pkg) => pkg.code === preferred) ??
+            availablePackages[0]
           );
         });
       } catch (err: unknown) {
@@ -235,7 +304,7 @@ export default function SubscriptionPortal({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [forceGeneratedCode]);
 
   const handleSelect = (pkg: Package) => {
     if (loading || verifying) return;
@@ -288,6 +357,9 @@ export default function SubscriptionPortal({
         return;
       }
 
+      // Remember the chosen package so it can be shown after payment.
+      writeStorage(STORAGE_PENDING_PACKAGE, selected.code);
+
       // Redirect the applicant to the payment provider.
       window.location.assign(checkoutUrl);
     } catch (err: unknown) {
@@ -329,15 +401,17 @@ export default function SubscriptionPortal({
       return;
     }
 
+    // Prevent verifying the same reference twice (e.g. React StrictMode).
+    if (verifiedReferenceRef.current === reference) return;
+    verifiedReferenceRef.current = reference;
+
     setVerifying(true);
     setError(null);
 
     try {
       const response = await verifyPayment({ reference });
-      const result = unwrapResponse(response);
-      const payment = result?.payment ?? result;
 
-      if (!isVerifiedPayment(payment)) {
+      if (!isVerifiedResponse(response)) {
         setAccessCode(null);
         setSubscribed(false);
 
@@ -348,7 +422,7 @@ export default function SubscriptionPortal({
         return;
       }
 
-      const code = getAccessCode(payment);
+      const code = findAccessCode(response);
 
       if (!code) {
         setAccessCode(null);
@@ -361,23 +435,31 @@ export default function SubscriptionPortal({
         return;
       }
 
-      const matchingPackage = getPackage(payment, packages);
+      const matchingPackage = findPackageInResponse(response, packages);
+      const packageCode =
+        matchingPackage?.code ?? readStorage(STORAGE_PENDING_PACKAGE);
 
       if (matchingPackage) {
         setSelected(matchingPackage);
+      } else if (packageCode) {
+        const stored = packages.find((pkg) => pkg.code === packageCode);
+        if (stored) setSelected(stored);
       }
+
+      // Persist so the generated-code page can display them after navigation.
+      writeStorage(STORAGE_ACCESS_CODE, code);
+      if (packageCode) writeStorage(STORAGE_PACKAGE_CODE, packageCode);
+      removeStorage(STORAGE_PENDING_PACKAGE);
 
       setAccessCode(code);
       setSubscribed(true);
 
       // Remove callback parameters after successful verification.
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname
-      );
+      window.history.replaceState({}, document.title, window.location.pathname);
     } catch (err: unknown) {
       console.error("Payment verification failed:", err);
+
+      verifiedReferenceRef.current = null;
 
       setError(
         err instanceof Error
@@ -393,6 +475,7 @@ export default function SubscriptionPortal({
     void verifyReturnedPayment();
   }, [verifyReturnedPayment]);
 
+  // After a verified payment, move to the generated-code page.
   useEffect(() => {
     if (!shouldShowGeneratedCode || forceGeneratedCode || !accessCode) {
       return;
@@ -400,6 +483,13 @@ export default function SubscriptionPortal({
 
     navigate("/subscription/generated-code", { replace: true });
   }, [shouldShowGeneratedCode, forceGeneratedCode, accessCode, navigate]);
+
+  // Opening the code page directly with no saved code sends the user back.
+  useEffect(() => {
+    if (forceGeneratedCode && !packagesLoading && !accessCode) {
+      navigate("/subscription", { replace: true });
+    }
+  }, [forceGeneratedCode, packagesLoading, accessCode, navigate]);
 
   if (packagesLoading || verifying) {
     return (
@@ -416,7 +506,7 @@ export default function SubscriptionPortal({
           <p className="mt-2 text-sm text-gray-500">
             {packagesLoading
               ? "Please wait while we retrieve the available packages."
-              : "Please wait while GNITI confirms your transaction."}
+              : "Please wait while confirms your transaction."}
           </p>
         </div>
       </div>
@@ -434,8 +524,8 @@ export default function SubscriptionPortal({
               </h1>
 
               <p className="mx-auto max-w-md text-sm text-gray-600">
-                Select a package, provide your details, and complete
-                payment to receive your access code.
+                Select a package, provide your details, and complete payment to
+                receive your access code.
               </p>
             </div>
 
@@ -483,10 +573,7 @@ export default function SubscriptionPortal({
             )}
 
             {accessCode && selected && (
-              <GeneratedCode
-                pkg={selected}
-                accessCode={accessCode}
-              />
+              <GeneratedCode pkg={selected} accessCode={accessCode} />
             )}
           </>
         )}
