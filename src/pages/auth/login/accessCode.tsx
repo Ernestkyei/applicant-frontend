@@ -34,7 +34,7 @@ export function AccessCodePage() {
         localStorage.setItem('applicationId', 'app_123'); // In real app, get from API
 
         toast.success('Access granted! Redirecting...');
-        navigate('/applicant/dashboard');
+        navigate('/subscription/generated-code', { replace: true });
       } else {
         setError("Invalid access code. Please check and try again.");
         toast.error('Invalid access code');

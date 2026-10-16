@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 interface GeneratedCodeProps {
@@ -10,18 +9,21 @@ interface GeneratedCodeProps {
     highlight?: boolean;
   };
   accessCode: string;
+  /** Set to false only if this component should verify the payment itself. */
+  alreadyVerified?: boolean;
   verifyPayment?: (reference: string) => Promise<any>;
 }
 
 export default function GeneratedCode({
   pkg,
   accessCode,
+  alreadyVerified = true,
   verifyPayment,
 }: GeneratedCodeProps) {
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [verified, setVerified] = useState(false);
+  const [verified, setVerified] = useState(alreadyVerified);
 
   const handleVerifyPayment = async () => {
     if (!verifyPayment) {
@@ -46,10 +48,7 @@ export default function GeneratedCode({
       if (
         result?.verified === true ||
         result?.success === true ||
-        status === "success" ||
-        status === "successful" ||
-        status === "completed" ||
-        status === "paid"
+        ["success", "successful", "completed", "paid"].includes(status)
       ) {
         setVerified(true);
         setMessage("Payment verification completed.");
@@ -124,9 +123,7 @@ export default function GeneratedCode({
         </div>
       ) : (
         <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
-          <h3 className="font-semibold text-green-800">
-            Your Access Code
-          </h3>
+          <h3 className="font-semibold text-green-800">Your Access Code</h3>
 
           <p className="mt-2 break-all font-mono text-lg text-green-900">
             {accessCode}
@@ -150,4 +147,3 @@ export default function GeneratedCode({
     </div>
   );
 }
-

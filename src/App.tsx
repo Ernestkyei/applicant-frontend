@@ -22,6 +22,10 @@ function App() {
           <Route path="/auth/login" element={<AccessCodePage />} />
           <Route path="/access-code" element={<AccessCodePage />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route
+            path="/subscription/generated-code"
+            element={<Subscription forceGeneratedCode />}
+          />
           <Route path="/applicant/dashboard" element={<ApplicantPage />} />
           <Route path="/applicant/payment" element={<Payment />} />
           <Route path="/applicant/status" element={<StatusPage />} />

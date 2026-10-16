@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import PackageCard from "../shared/PackageCard";
 import SubscriptionForm from "../shared/SubscriptionForm";
@@ -162,7 +163,14 @@ function getCheckoutUrl(value: any): string | null {
     : null;
 }
 
-export default function SubscriptionPortal() {
+interface SubscriptionPortalProps {
+  forceGeneratedCode?: boolean;
+}
+
+export default function SubscriptionPortal({
+  forceGeneratedCode = false,
+}: SubscriptionPortalProps) {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [selected, setSelected] = useState<Package | null>(null);
 
@@ -173,6 +181,8 @@ export default function SubscriptionPortal() {
   const [subscribed, setSubscribed] = useState(false);
   const [accessCode, setAccessCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const shouldShowGeneratedCode = forceGeneratedCode || subscribed;
 
   // Load available packages from the backend.
   useEffect(() => {
@@ -383,6 +393,14 @@ export default function SubscriptionPortal() {
     void verifyReturnedPayment();
   }, [verifyReturnedPayment]);
 
+  useEffect(() => {
+    if (!shouldShowGeneratedCode || forceGeneratedCode || !accessCode) {
+      return;
+    }
+
+    navigate("/subscription/generated-code", { replace: true });
+  }, [shouldShowGeneratedCode, forceGeneratedCode, accessCode, navigate]);
+
   if (packagesLoading || verifying) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
@@ -408,7 +426,7 @@ export default function SubscriptionPortal() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-[900px] px-6 py-12">
-        {!subscribed ? (
+        {!shouldShowGeneratedCode ? (
           <>
             <div className="mb-10 text-center">
               <h1 className="mb-3 text-4xl font-bold text-gray-900 md:text-5xl">
